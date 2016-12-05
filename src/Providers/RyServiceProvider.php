@@ -21,6 +21,8 @@ class RyServiceProvider extends ServiceProvider
     {
     	parent::boot($router);
     	
+    	define("RYWPBLOG", "RYWPBLOG");
+    	
     	require_once( config("rywpblog.dir") . "/wp-load.php" );
     	
     	//ressources
@@ -37,7 +39,6 @@ class RyServiceProvider extends ServiceProvider
     			$query->where("post_status", "=", "publish");
     		})->first();
     		if($post) {
-    			require_once( config('rywpblog.dir') . '/wp-load.php' );
     			$wp_post = get_post($post->ID);
     			setup_postdata($wp_post);
     		}
@@ -51,7 +52,6 @@ class RyServiceProvider extends ServiceProvider
     				$query->where("slug", "LIKE", $href);
     			})->first();
     			if($term) {
-    				require_once( config('rywpblog.dir') . '/wp-load.php' );
     				$posts = get_posts([
     						'numberposts' => 10,
     						'category' => $term->term_id, 'orderby' => 'date',
@@ -87,7 +87,6 @@ class RyServiceProvider extends ServiceProvider
     		Blade::directive('wpmenu', function($expression) {
     				$v = trim($expression, '()');
     				$ar = explode(" as ", $v);
-    				require_once( config('rywpblog.dir') . '/wp-load.php' );
     				$locations = get_nav_menu_locations();
     				$location = trim($ar[0]);
     				$menuname = "m" . Str::quickRandom();
@@ -131,6 +130,48 @@ class RyServiceProvider extends ServiceProvider
     					$s = '<?php endforeach; ?>';
     					return $s;
     				});
+    					Blade::directive('wpposts', function($expression) {
+    						$v = trim($expression, '()');
+    						$ar = explode(",", $v);
+    						$ar = array_map(function($item){
+    							return trim($item, " ");
+    						}, $ar);
+    						$s = "";
+    						if(count($ar)>0) {
+    							$varname = trim($ar[0], '"');
+    						}
+    							
+    						$catname = "v" . Str::quickRandom();
+    						if(count($ar)>1) {
+    							$ar = explode(",", $v, 2);
+    							$p_args = array(
+    									"post_type" => 'post',
+    									"posts_per_page" => -1,
+    									"orderby"=> "id",
+    									"order" => "ASC"
+    							);
+    							$json = array_merge($p_args, json_decode($ar[1], true));
+    							//si plugin translator axtivé
+    							/*$locale = get_locale();
+    							 if(isset($json["category_name"]) && $locale) {
+    							 $json["category_name"] = $json["category_name"]."-".$locale{0}.$locale{1};
+    							}*/
+    							$s = '$'.$catname.' = new WP_Query(json_decode(\''.json_encode($json).'\'));
+						while ( $'.$catname.'->have_posts() ) : $'.$catname.'->the_post();';
+    						}
+    						else {
+    							$s = 'while ( have_posts() ) : the_post();';
+    						}
+    						return '<?php
+				wp_reset_postdata();
+				'.$s.'
+                $'. $varname .' = get_post();
+                    ?>';
+    					});
+    					
+    						Blade::directive('endwpposts', function($expression) {
+    							return '<?php endwhile; ?>';
+    						});
     }
 
     /**
