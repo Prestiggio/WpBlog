@@ -9,6 +9,7 @@ use Ry\Wpblog\Models\Post;
 use Ry\Wpblog\Models\Term;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Str;
+use Illuminate\Filesystem\Filesystem;
 
 class RyServiceProvider extends ServiceProvider
 {
@@ -21,9 +22,10 @@ class RyServiceProvider extends ServiceProvider
     {
     	parent::boot($router);
     	
-    	define("RYWPBLOG", "RYWPBLOG");
+    	if(!defined("RYWPBLOG"))
+    		define("RYWPBLOG", "RYWPBLOG");
     	
-    	require_once( config("rywpblog.dir") . "/wp-load.php" );
+    	require_once( env("wp_dir") . "/wp-load.php" );
     	
     	//ressources
     	$this->loadViewsFrom(__DIR__.'/../ressources/views', 'rywpblog');
@@ -84,7 +86,21 @@ class RyServiceProvider extends ServiceProvider
 	        	__DIR__.'/../database/migrations/' => database_path('migrations')
 	    ], 'migrations');
 	    */
-    		Blade::directive('wpmenu', function($expression) {
+    		
+    	Blade::extend(function($view, $compiler){
+    		$pattern = $compiler->createMatcher('paginatePretty');
+    		$code =
+    				'$1<?php
+		        echo "banana" . $2;
+		    ?>';
+    		return preg_replace($pattern, $code, $view);
+    	});
+    	
+    	Blade::extend(function($view, $compiler){
+    		$pattern = $compiler->createMatcher('wpmenu');
+    				preg_match_all($pattern, $view, $reg);
+    				$expression = $reg[2][0];    				
+    				
     				$v = trim($expression, '()');
     				$ar = explode(" as ", $v);
     				$locations = get_nav_menu_locations();
@@ -122,15 +138,20 @@ class RyServiceProvider extends ServiceProvider
 					foreach($'.$menuname.' as $'.$item.'):
                     ?>';
     				}
-    					
-    				return $s;
+    				
+    				return preg_replace($pattern, $s, $view);
     			});
     			
-    				Blade::directive('endwpmenu', function($expression) {
+    				Blade::extend(function($view, $compiler){
+    					$pattern = $compiler->createPlainMatcher('endwpmenu');
     					$s = '<?php endforeach; ?>';
-    					return $s;
+    					return preg_replace($pattern, $s, $view);
     				});
-    					Blade::directive('wpposts', function($expression) {
+    					Blade::extend(function($view, $compiler){
+				    		$pattern = $compiler->createMatcher('wpposts');
+				    				preg_match_all($pattern, $view, $reg);
+				    		
+				    		$expression = $reg[2][0];
     						$v = trim($expression, '()');
     						$ar = explode(",", $v);
     						$ar = array_map(function($item){
@@ -162,15 +183,18 @@ class RyServiceProvider extends ServiceProvider
     						else {
     							$s = 'while ( have_posts() ) : the_post();';
     						}
-    						return '<?php
-				wp_reset_postdata();
-				'.$s.'
-                $'. $varname .' = get_post();
-                    ?>';
+    						
+    						return preg_replace($pattern, '<?php
+									wp_reset_postdata();
+									'.$s.'
+					                $'. $varname .' = get_post();
+					                    ?>', $view);
     					});
     					
-    						Blade::directive('endwpposts', function($expression) {
-    							return '<?php endwhile; ?>';
+    						Blade::extend(function($view, $compiler){
+    							$pattern = $compiler->createPlainMatcher('endwpposts');
+    							$s = '<?php endwhile; ?>';
+    							return preg_replace($pattern, $s, $view);
     						});
     }
 
@@ -181,10 +205,11 @@ class RyServiceProvider extends ServiceProvider
      */
     public function register()
     {
+    	
     }
+    
     public function map(Router $router)
-    {   
-    	 	
+    {       	 	
     	if (! $this->app->routesAreCached()) {
     		$router->group(['namespace' => 'Ry\Wpblog\Http\Controllers'], function(){
     			require __DIR__.'/../Http/routes.php';

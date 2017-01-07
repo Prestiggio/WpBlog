@@ -9,7 +9,7 @@ class Post extends Model
     protected $table = "posts";
     
     public function __construct(array $attributes = []) {
-    	$this->table = config("rywpblog.prefix") . $this->table;
+    	$this->table = env("wp_prefix") . $this->table;
     	
     	parent::__construct($attributes);
     }
