@@ -138,7 +138,7 @@ class Wpblog
 	}
 	
 	public function view($template, $href, $params = []) {
-		list($key, $value) = explode("://", $href);
+		list($meta_key, $meta_value) = explode("://", $href);
 		$wp_query = new \WP_Query(["meta_key" => $meta_key, "meta_value" => $meta_value]);
 		if($wp_query->is_404())
 			abort(404);
