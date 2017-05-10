@@ -121,7 +121,7 @@ class Wpblog
 				while ( $'.$catname.'->have_posts() ) : $'.$catname.'->the_post();';
 			}
 			else {
-				$s = '$'.$catname.' = new WP_Query(["meta_key" => $meta_key, "meta_value" => $meta_value]);
+				$s = '$'.$catname.' = new WP_Query(["post_type" => "any", meta_key" => $meta_key, "meta_value" => $meta_value]);
 				while ( $'.$catname.'->have_posts() ) : $'.$catname.'->the_post();';
 			}
 			
