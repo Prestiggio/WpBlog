@@ -121,7 +121,8 @@ class Wpblog
 				while ( $'.$catname.'->have_posts() ) : $'.$catname.'->the_post();';
 			}
 			else {
-				$s = 'while ( have_posts() ) : the_post();';
+				$s = '$'.$catname.' = new WP_Query(["meta_key" => $meta_key, "meta_value" => $meta_value]);
+				while ( $'.$catname.'->have_posts() ) : $'.$catname.'->the_post();';
 			}
 			
 			return '<?php
@@ -136,16 +137,14 @@ class Wpblog
 		});
 	}
 	
-	public function post($href) {
-		$posts = get_posts([
-				"meta_key" => "blogurl",
-				"meta_value" => $href
-		]);
-		if(count($posts)==0) {
+	public function view($template, $href, $params = []) {
+		list($key, $value) = explode("://", $href);
+		$wp_query = new \WP_Query(["meta_key" => $meta_key, "meta_value" => $meta_value]);
+		if($wp_query->is_404())
 			abort(404);
-		}
-		$wp_post = $posts[0];
-		setup_postdata($wp_post);
-		return Post::where("ID", "=", $wp_post->ID)->first();
+		$params["post"] = $wp_query->get_posts()[0];
+		$params["meta_key"] = $key;
+		$params["meta_value"] = $value;
+		return view($template, $params);
 	}
 }
