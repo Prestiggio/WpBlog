@@ -139,12 +139,17 @@ class Wpblog
 	
 	public function view($template, $href, $params = []) {
 		list($meta_key, $meta_value) = explode("://", $href);
-		$wp_query = new \WP_Query(["post_type" => "any", "meta_key" => $meta_key, "meta_value" => $meta_value]);
-		if($wp_query->is_404())
-			abort(404);
-		$params["post"] = $wp_query->get_posts()[0];
+		$params["post"] = $this->post($href);
 		$params["meta_key"] = $meta_key;
 		$params["meta_value"] = $meta_value;
 		return view($template, $params);
+	}
+	
+	public function post($href) {
+		list($meta_key, $meta_value) = explode("://", $href);
+		$wp_query = new \WP_Query(["post_type" => "any", "meta_key" => $meta_key, "meta_value" => $meta_value]);
+		if($wp_query->is_404())
+			abort(404);
+		return $wp_query->get_posts()[0];
 	}
 }
