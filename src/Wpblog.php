@@ -9,6 +9,10 @@ use Illuminate\Support\Str;
 
 class Wpblog
 {
+	private $cache = [];
+	
+	private $context = [];
+	
 	public function __construct() {
 		require_once( env("wp_dir") . "/wp-load.php" );
 		 
@@ -135,6 +139,13 @@ class Wpblog
 		Blade::directive('endwpposts', function($expression){
 			return '<?php endwhile; ?>';
 		});
+		
+		Blade::directive('blog', function($expression){
+			$url = trim($expression, '(")');
+			$components = explode(".", $url);
+			$attr = array_pop($components);
+			return '<?php echo app("rywpblog")->post("'.implode(".", $components).'")->'.$attr.'; ?>';
+		});
 	}
 	
 	public function view($template, $href, $params = []) {
@@ -146,10 +157,39 @@ class Wpblog
 	}
 	
 	public function post($href) {
-		list($meta_key, $meta_value) = explode("://", $href);
-		$wp_query = new \WP_Query(["post_type" => "any", "meta_key" => $meta_key, "meta_value" => $meta_value]);
-		if($wp_query->is_404())
-			abort(404);
-		return $wp_query->get_posts()[0];
+		if(!isset($this->cache[$href])) {
+			list($meta_key, $meta_value) = explode("://", $href);
+			$wp_query = new \WP_Query(["post_type" => "any", "meta_key" => $meta_key, "meta_value" => $meta_value]);
+			if($wp_query->is_404())
+				abort("$href not found", 404);
+			
+			$this->cache[$href] = $wp_query->get_posts()[0];
+		}
+		
+		return $this->cache[$href];
+	}
+	
+	public function content($href, $context=[]) {
+		$this->context = array_merge($this->context, $context);
+		add_shortcode("ry", [$this, "shortcode"]);
+		return do_shortcode($this->post($href)->post_content);
+	}
+	
+	public function shortcode($args=[]) {
+		if(isset($args["model"])) {
+			$ar = explode(".", $args["model"]);
+			$v = null;
+			$root = array_shift($ar);
+			if(isset($this->context[$root])) {
+				$v = $this->context[$root];
+				foreach ($ar as $a) {
+					if(isset($v->$a)) {
+						$v = $v->$a;
+					}
+				}
+				return $v;	
+			}
+		}
+		return "";
 	}
 }
