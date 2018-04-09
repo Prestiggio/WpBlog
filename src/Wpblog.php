@@ -163,7 +163,11 @@ class Wpblog
 			if($wp_query->is_404())
 				abort("$href not found", 404);
 			
-			$this->cache[$href] = $wp_query->get_posts()[0];
+			$posts = $wp_query->get_posts();
+			if(count($posts)>0)
+				$this->cache[$href] = $wp_query->get_posts()[0];
+			else
+				$this->cache[$href] = new Post();
 		}
 		
 		return $this->cache[$href];
