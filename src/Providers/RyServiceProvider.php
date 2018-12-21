@@ -15,8 +15,6 @@ class RyServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-    	parent::boot();
-    	
     	if(!defined("RYWPBLOG"))
     		define("RYWPBLOG", "RYWPBLOG");
 
